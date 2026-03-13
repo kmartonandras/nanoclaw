@@ -39,7 +39,10 @@ export async function processImage(
   const relativePath = path.join('attachments', filename);
 
   await sharp(buffer)
-    .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+    .resize(MAX_DIMENSION, MAX_DIMENSION, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
     .jpeg({ quality: JPEG_QUALITY })
     .toFile(filePath);
 

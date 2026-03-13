@@ -210,7 +210,13 @@ export class TelegramChannel implements Channel {
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
 
       let content: string;
       try {
@@ -225,11 +231,18 @@ export class TelegramChannel implements Channel {
         const processed = await processImage(buffer, groupDir, caption);
         content = processed.content;
         logger.info(
-          { chatJid, fileId: photo.file_id, path: processed.attachment.relativePath },
+          {
+            chatJid,
+            fileId: photo.file_id,
+            path: processed.attachment.relativePath,
+          },
           'Telegram photo downloaded and saved',
         );
       } catch (err) {
-        logger.warn({ chatJid, err }, 'Failed to download/process Telegram photo, using placeholder');
+        logger.warn(
+          { chatJid, err },
+          'Failed to download/process Telegram photo, using placeholder',
+        );
         content = caption ? `[Photo] ${caption}` : '[Photo]';
       }
 
