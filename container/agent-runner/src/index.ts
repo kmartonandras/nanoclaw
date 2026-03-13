@@ -19,6 +19,11 @@ import path from 'path';
 import { query, HookCallback, PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 import { fileURLToPath } from 'url';
 
+interface ImageAttachment {
+  relativePath: string;
+  mediaType: string;
+}
+
 interface ContainerInput {
   prompt: string;
   sessionId?: string;
@@ -27,6 +32,7 @@ interface ContainerInput {
   isMain: boolean;
   isScheduledTask?: boolean;
   assistantName?: string;
+  imageAttachments?: ImageAttachment[];
 }
 
 interface ContainerOutput {
@@ -47,9 +53,16 @@ interface SessionsIndex {
   entries: SessionEntry[];
 }
 
+interface ImageContentBlock {
+  type: 'image';
+  source: { type: 'base64'; media_type: string; data: string };
+}
+
+type ContentBlock = ImageContentBlock | { type: 'text'; text: string };
+
 interface SDKUserMessage {
   type: 'user';
-  message: { role: 'user'; content: string };
+  message: { role: 'user'; content: string | ContentBlock[] };
   parent_tool_use_id: null;
   session_id: string;
 }
@@ -71,6 +84,16 @@ class MessageStream {
     this.queue.push({
       type: 'user',
       message: { role: 'user', content: text },
+      parent_tool_use_id: null,
+      session_id: '',
+    });
+    this.waiting?.();
+  }
+
+  pushMultimodal(blocks: ContentBlock[]): void {
+    this.queue.push({
+      type: 'user',
+      message: { role: 'user', content: blocks },
       parent_tool_use_id: null,
       session_id: '',
     });
@@ -339,6 +362,24 @@ async function runQuery(
 ): Promise<{ newSessionId?: string; lastAssistantUuid?: string; closedDuringQuery: boolean }> {
   const stream = new MessageStream();
   stream.push(prompt);
+
+  // Attach images as a follow-up multimodal message if present
+  if (containerInput.imageAttachments && containerInput.imageAttachments.length > 0) {
+    const blocks: ContentBlock[] = [];
+    for (const attachment of containerInput.imageAttachments) {
+      const absPath = path.join('/workspace/group', attachment.relativePath);
+      try {
+        const data = fs.readFileSync(absPath).toString('base64');
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: attachment.mediaType, data } });
+      } catch (err) {
+        log(`Failed to read image attachment ${absPath}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    if (blocks.length > 0) {
+      log(`Attaching ${blocks.length} image(s) as multimodal content`);
+      stream.pushMultimodal(blocks);
+    }
+  }
 
   // Poll IPC for follow-up messages and _close sentinel during the query
   let ipcPolling = true;
