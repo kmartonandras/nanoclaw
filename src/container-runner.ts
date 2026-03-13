@@ -115,6 +115,16 @@ function buildVolumeMounts(
     }
   }
 
+  // Personal documents directory (read-only for all groups)
+  const docsDir = path.join(os.homedir(), 'documents');
+  if (fs.existsSync(docsDir)) {
+    mounts.push({
+      hostPath: docsDir,
+      containerPath: '/workspace/documents',
+      readonly: true,
+    });
+  }
+
   // Per-group Claude sessions directory (isolated from other groups)
   // Each group gets their own .claude/ to prevent cross-group session access
   const groupSessionsDir = path.join(
