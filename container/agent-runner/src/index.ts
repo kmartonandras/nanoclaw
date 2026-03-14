@@ -361,11 +361,10 @@ async function runQuery(
   resumeAt?: string,
 ): Promise<{ newSessionId?: string; lastAssistantUuid?: string; closedDuringQuery: boolean }> {
   const stream = new MessageStream();
-  stream.push(prompt);
 
-  // Attach images as a follow-up multimodal message if present
+  // Combine text and images into a single multimodal message so Claude sees them together
   if (containerInput.imageAttachments && containerInput.imageAttachments.length > 0) {
-    const blocks: ContentBlock[] = [];
+    const blocks: ContentBlock[] = [{ type: 'text', text: prompt }];
     for (const attachment of containerInput.imageAttachments) {
       const absPath = path.join('/workspace/group', attachment.relativePath);
       try {
@@ -375,10 +374,10 @@ async function runQuery(
         log(`Failed to read image attachment ${absPath}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
-    if (blocks.length > 0) {
-      log(`Attaching ${blocks.length} image(s) as multimodal content`);
-      stream.pushMultimodal(blocks);
-    }
+    log(`Attaching ${blocks.length - 1} image(s) as multimodal content`);
+    stream.pushMultimodal(blocks);
+  } else {
+    stream.push(prompt);
   }
 
   // Poll IPC for follow-up messages and _close sentinel during the query
