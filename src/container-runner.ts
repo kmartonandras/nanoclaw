@@ -140,6 +140,8 @@ function buildVolumeMounts(
       settingsFile,
       JSON.stringify(
         {
+          // Auto-approve MCP servers defined in the group's .mcp.json
+          enableAllProjectMcpServers: true,
           env: {
             // Enable agent swarms (subagent orchestration)
             // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
@@ -150,6 +152,34 @@ function buildVolumeMounts(
             // Enable Claude's memory feature (persists user preferences between sessions)
             // https://code.claude.com/docs/en/memory#manage-auto-memory
             CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
+          },
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
+
+  // Create default .mcp.json in the group folder if it doesn't exist
+  const mcpJsonPath = path.join(groupDir, '.mcp.json');
+  if (!fs.existsSync(mcpJsonPath)) {
+    fs.writeFileSync(
+      mcpJsonPath,
+      JSON.stringify(
+        {
+          mcpServers: {
+            'sequential-thinking': {
+              command: 'npx',
+              args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+            },
+            fetch: {
+              command: 'npx',
+              args: ['-y', '@modelcontextprotocol/server-fetch'],
+            },
+            playwright: {
+              command: 'npx',
+              args: ['-y', '@playwright/mcp'],
+            },
           },
         },
         null,
