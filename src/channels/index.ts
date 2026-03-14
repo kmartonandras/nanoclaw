@@ -3,8 +3,8 @@
 
 // discord
 
-// gmail
-import './gmail.js';
+// gmail (channel disabled — use MCP tools only, no inbox monitoring)
+// import './gmail.js';
 
 // slack
 
